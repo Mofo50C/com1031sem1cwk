@@ -1,3 +1,4 @@
+.include "tools.s"
 .text
 .global main
 
@@ -24,21 +25,23 @@ _play_again:
 	push {r4-r7, lr}
 	// send output
 	mov r0, #1
-	ldr r1, =in_msg
-	mov r2, #in_msg_len
+	ldr r1, =play_again_msg
+	ldr r2, =play_again_msglen
 	mov r7, #4
 	svc #0
-
 	// read input
 	mov r0, #0
 	ldr r1, =in_buf
 	mov r2, #2
 	mov r7, #3
 	svc #0
-	
+	// strip new line from input
+	ldr r0, =in_buf
+	bl _strip_lf
 	// check if input is n
-	ldrb r4, [r1]
-	cmp r4, #110
+	ldr r4, =in_buf
+	ldrb r5, [r4]
+	cmp r5, #110
 	bne __not_done
 	ldr r4, =done
 	mov r5, #255
@@ -52,8 +55,8 @@ __not_done:
 done: .byte 0 // boolean TRUE = 255, FALSE = 0
 
 //strings
-in_msg: .string "Do you want to play again? (y/n): "
-in_msg_len = .-in_msg
+play_again_msg: .string "Do you want to play again? (y/n): "
+play_again_msglen = .-play_again_msg
 
 .bss
 in_buf: .skip 3
