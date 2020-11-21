@@ -1,12 +1,28 @@
 .include "macros.s"
 .include "tools.s"
 .text
-.global main
 
-main:
-    @ bl _handle_input
-    mov r7, #1
-    svc #0
+.macro print_word
+    ldr r0, =reveal_msg
+    bl printf
+    ldr r0, =current_word
+    bl puts
+.endm
+
+.macro print_attempts
+    push {r4}
+    ldr r0, =debug_attempts
+    ldr r4, =attempts
+    ldrb r1, [r4]
+    bl printf
+    pop {r4}
+.endm
+@ .global main
+
+@ main:
+@     bl _run
+@     mov r7, #1
+@     svc #0
 
 
 _file_not_found:
@@ -18,11 +34,11 @@ _file_not_found:
 
 _get_hang_gfx:
     push {r4-r11, lr}
-    mov r4, r0
+    ldr r4, =attempts
     // get the correct hang man file from number of attempts
     ldr r0, =hang_file_name
     ldr r1, =hang_file_format
-    mov r2, r4
+    ldrb r2, [r4]
     bl sprintf
     // open the correct hang man file
     ldr r0, =hang_file_name
@@ -42,9 +58,7 @@ _get_hang_gfx:
     bl fclose
     // get length of buffer
     ldr r0, =hang_buffer
-    bl printf
-    ldr r0, =new_line
-    bl printf
+    bl puts
     pop {r4-r11, lr}
     bx lr
 
@@ -91,12 +105,16 @@ __read_line_loop_e:
 _init_game_vars:
     push {r4-r11, lr}
     mov r5, #0
-    ldr r4, =gameover
-    strb r4, [r5]
     ldr r4, =win
-    strb r4, [r5]
+    strb r5, [r4]
+    ldr r4, =lose
+    strb r5, [r4]
+    ldr r4, =gameover
+    strb r5, [r4]
+    ldr r4, =win
+    strb r5, [r4]
     ldr r4, =attempts
-    strb r4, [r5]
+    strb r5, [r4]
     ldr r0, =current_word
     mov r1, #0
     mov r2, #17
@@ -104,6 +122,30 @@ _init_game_vars:
     ldr r0, =guess
     mov r1, #0
     mov r2, #17
+    bl _fill_string_amt
+    ldr r0, =misses
+    mov r1, #0
+    mov r2, #8
+    bl _fill_string_amt
+    ldr r0, =hang_buffer
+    mov r1, #0
+    mov r2, #97
+    bl _fill_string_amt
+    pop {r4-r11, lr}
+    bx lr
+
+
+_check_exit:
+    push {r4-r11, lr}
+    ldr r4, =input_buffer
+    ldrb r5, [r4]
+    cmp r4, #48
+    bne __checkExit_skip
+    // gameover =  True;
+    mov r6, #255
+    ldr r7, =gameover
+    strb r6, [r7]
+__checkExit_skip:
     pop {r4-r11, lr}
     bx lr
 
@@ -132,19 +174,115 @@ _handle_input:
     bx lr
 
 
+_add_to_guess:
+    push {r4-r11, lr}
+    mov r4, r0
+    ldr r5, =input_buffer
+    ldrb r6, [r5]
+    ldr r7, =guess
+    add r7, r4
+    strb r6, [r7]
+    pop {r4-r11, lr}
+    bx lr
+
+
+_check_player_guess:
+    push {r4-r11, lr}
+    ldr r4, =input_buffer
+    ldrb r5, [r4]
+    ldr r6, =current_word
+    @ print_word
+    mov r0, r6
+    mov r1, r4
+    bl _str_contains  // input_buffer in current_word
+    cmp r0, #0
+    beq __checkGuess_skip  // branches if input_buffer is not in current_word
+    mov r7, #0  // index = 0
+__checkGuess_loop:
+    ldrb r9, [r6], #1  // load current word into r9
+    cmp r9, #0  // exit loop if null
+    beq __checkGuess_loop_e
+    cmp r5, r9
+    moveq r0, r7
+    bleq _add_to_guess  // update guesses to include newly input char
+    add r7, #1  // index++
+    b __checkGuess_loop  // iterate
+__checkGuess_loop_e:
+    ldr r0, =guess
+    ldr r1, =current_word
+    bl _str_equals  // check if guess and current_word are equal
+    cmp r0, #0
+    beq __checkGuess_return  // return if _str_equals() == False
+    ldr r4, =gameover
+    ldr r5, =win
+    mov r6, #255
+    strb r6, [r4]  // gameover = True
+    strb r6, [r5]  // win = True
+    b __checkGuess_return
+__checkGuess_skip:
+    @ print_word
+    ldr r0, =misses
+    ldr r1, =input_buffer
+    bl _str_contains
+    cmp r0, #255
+    beq __checkGuess_return
+    // increment attempts
+    ldr r4, =attempts
+    ldrb r5, [r4]
+    add r5, #1
+    strb r5, [r4]
+    // add the miss to the incorrect letters
+    ldr r0, =misses
+    ldr r1, =input_buffer
+    bl strcat
+    @ print_word
+    // check if attempts == 6 and update flags
+    ldr r4, =attempts
+    ldrb r5, [r4]
+    cmp r5, #6
+    blt __checkGuess_return
+    ldr r4, =gameover
+    ldr r5, =lose
+    mov r6, #255
+    strb r6, [r4]
+    strb r6, [r5]
+__checkGuess_return:
+    pop {r4-r11, lr}
+    bx lr
+
+
 _update:
     push {r4-r11, lr}
-
+    bl _check_player_guess
     pop {r4-r11, lr}
     bx lr
 
 
 _draw:
     push {r4-r11, lr}
-    sysout current_word, current_word_len
-    ldr r4, =attempts
-    ldrb r0, [r4]
+    ldr r0, =guesses_msg
+    bl printf
+    ldr r0, =guess
+    bl puts
+    ldr r0, =misses_msg
+    bl printf
+    ldr r0, =misses
+    bl puts
+    ldr r0, =new_line
+    bl printf
     bl _get_hang_gfx
+    ldr r4, =lose
+    ldrb r5, [r4]
+    cmp r5, #255
+    ldreq r0, =defeat_msg
+    bleq puts
+    ldr r4, =win
+    ldrb r5, [r4]
+    cmp r5, #255
+    ldreq r0, =victory_msg
+    bleq puts
+    print_attempts
+__draw_return:
     pop {r4-r11, lr}
     bx lr
 
@@ -158,21 +296,38 @@ _run:
     str r0, [r4]
     ldr r0, =guess
     mov r1, #95
-    ldrb r2, [r5]
+    ldrb r2, [r4]
     bl _fill_string_amt
     bl _draw
-
 __game_loop:
     ldr r5, =gameover
     ldrb r4, [r5]
     cmp r4, #255
     beq __game_loop_e
+
     bl _handle_input
-    bl _update
+    // validate input
+    // load input into r4
+    ldr r4, =input_buffer
+    ldrb r5, [r4]
+    mov r0, r4
+    bl _is_capital
+    cmp r0, #255  // compare input and 'A'
+    beq __valid_input
+    cmp r5, #48  // if exit is true
+    bne __game_loop
+    ldr r4, =gameover
+    mov r5, #255
+    strb r5, [r4]
+    ldr r0, =gameover_msg
+    bl puts
+    b __game_loop_e
+__valid_input:
+    bl _update  // player input is in [A-Z], check guess
     bl _draw
     b __game_loop
 __game_loop_e:
-
+    print_word
     pop {r4-r11, lr}
     bx lr
 
@@ -180,8 +335,10 @@ __game_loop_e:
 // vars
 gameover: .byte 0  // bool gameover;
 win: .byte 0  // bool win;
+lose: .byte 0  // bool lose;
 attempts: .byte 0  // byte attempts;
 current_word_len: .byte 0
+letter_found: .byte 0  // bool letter_found;
 
 // strings
 new_line: .string "\n"
@@ -189,11 +346,17 @@ words_file: .string "words.txt"
 read_mode: .string "r"
 file_error: .string "File not found\n"
 hang_file_format: .string "hang%d.txt"
-input_format: .string "%s"
 input_message: .string "Guess letter: "
+guesses_msg: .string "Word: "
+misses_msg: .string "Misses: "
+victory_msg: .string "VICTORY!"
+defeat_msg: .string "DEFEAT!"
+gameover_msg: .string "GAME OVER!"
+reveal_msg: .string "The word was: "
+debug_attempts: .string "Attempts: %d\n"
 
 .bss
-misses: .skip 7
+misses: .skip 8
 current_word: .skip 17
 guess: .skip 17
 hang_file_name: .skip 10
@@ -207,3 +370,5 @@ input_buffer: .skip 3
 .global fread
 .global scanf
 .global printf
+.global puts
+.global strcat

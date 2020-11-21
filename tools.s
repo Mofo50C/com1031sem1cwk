@@ -1,4 +1,69 @@
 .text
+// checks if argument char is a capital letter
+_is_capital:
+    push {r4-r11, lr}
+    mov r4, r0
+    ldrb r5, [r4]
+    mov r0, #0
+    cmp r5, #65
+    blt __isCapital_return
+    cmp r5, #90
+    movle r0, #255
+__isCapital_return:
+    pop {r4-r11, lr}
+    bx lr
+
+
+// checks if given str contains given character
+_str_contains:
+    push {r4-r11, lr}
+    mov r4, r0
+    mov r5, r1
+    ldrb r6, [r5]
+    mov r0, #0
+__strContains_loop:
+    ldrb r7, [r4], #1
+    cmp r7, #0
+    beq __strContains_loop_e
+    cmp r6, r7
+    moveq r0, #255
+    bne __strContains_loop
+__strContains_loop_e:
+    pop {r4-r11, lr}
+    bx lr
+
+
+// compares two strings, uses length of first one
+_str_equals:
+    push {r4-r11, lr}
+    mov r4, r0
+    mov r5, r1
+    // get length of str1
+    bl _length
+    mov r6, r0
+    // get length of str2
+    mov r0, r5
+    bl _length
+    mov r7, r0
+    mov r0, #0
+    // compare length of str1 and str2
+    cmp r6, r7
+    bne __strEquals_return  // return False if not equal
+__strEquals_loop:
+    ldrb r6, [r4], #1
+    ldrb r7, [r5], #1
+    cmp r6, #0
+    beq __strEquals_loop_e
+    cmp r6, r7
+    bne __strEquals_return  // return False if not equal
+    b __strEquals_loop
+__strEquals_loop_e:
+    mov r0, #255  // return True if strings exhausted 
+__strEquals_return:
+    pop {r4-r11, lr}
+    bx lr
+
+
 // converts str pointer in r0 to upper character wise, returns void
 _to_upper:
     push {r4-r11, lr}

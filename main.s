@@ -1,4 +1,4 @@
-.include "tools.s"
+.include "game.s"
 .text
 .global main
 
@@ -13,6 +13,7 @@ __main_loop:
 	ldrb r4, [r5]  // r4 = [done]
 	cmp r4, #255
 	beq __main_loop_e
+	bl _run
 	bl _play_again
 	b __main_loop
 __main_loop_e:
