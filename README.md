@@ -2,6 +2,6 @@
 
 Hangman game by Mohammad Foroughi
 
-<h1>to start the game simply execute main with ./main </h1>
+<h3>to start the game simply execute main with ./main </h3>
 
-<h1>DONT excecute game file</h1>
+<h3>DONT excecute game file</h3>
