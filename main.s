@@ -8,20 +8,26 @@ main:
 	mov r1, #0
 	mov r2, #0
 	mov r3, #0
+	ldr r0, =welcome_message
+	bl puts
 __main_loop:
 	ldr r5, =done
 	ldrb r4, [r5]  // r4 = [done]
-	cmp r4, #255
+	cmp r4, #255  // check if done is True
 	beq __main_loop_e
-	bl _run
-	bl _play_again
+	bl _run  // run main game
+	bl _play_again  // check for playing again
 	b __main_loop
 __main_loop_e:
+	ldr r0, =goodbye_msg
+	bl puts
 	pop {r4-r7, lr}
 	//exit
 	mov r7, #1
 	svc #0
 
+
+// does logic to check if player wants to play again
 _play_again:
 	push {r4-r7, lr}
 	// send output
@@ -58,6 +64,8 @@ done: .byte 0 // boolean TRUE = 255, FALSE = 0
 //strings
 play_again_msg: .string "Do you want to play again? (y/n): "
 play_again_msglen = .-play_again_msg
+welcome_message: .string "Hangman game in ARM Assembly by Mohammad Foroughi"
+goodbye_msg: .string "Thank you for playing...Goodbye!"
 
 .bss
 in_buf: .skip 3
