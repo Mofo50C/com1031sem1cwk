@@ -1,4 +1,4 @@
-# com1031sem1cwk
+# COM1031 Semester 1 Coursework
 
 Hangman game by Mohammad Foroughi
 
